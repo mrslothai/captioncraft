@@ -1,13 +1,20 @@
 """Cloudflare R2 storage integration using S3-compatible API."""
 import os
-import boto3
-from botocore.config import Config
 from typing import Optional
 from config import get_settings
+
+try:
+    import boto3
+    from botocore.config import Config
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
 
 
 def get_r2_client():
     """Create an S3 client configured for Cloudflare R2."""
+    if not BOTO3_AVAILABLE:
+        raise RuntimeError("boto3 not installed. R2 storage unavailable.")
     settings = get_settings()
     
     return boto3.client(

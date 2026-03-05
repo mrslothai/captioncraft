@@ -18,7 +18,11 @@ from models import (
 )
 from processor import process_video, create_job, get_job, update_job_status
 from subtitles import AVAILABLE_STYLES
-import storage
+try:
+    import storage
+    STORAGE_AVAILABLE = True
+except Exception:
+    STORAGE_AVAILABLE = False
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -133,17 +137,14 @@ async def upload_video(file: UploadFile = File(...)):
 
 @app.post("/upload/presigned", response_model=UploadResponse)
 async def get_presigned_upload_url(filename: str, content_type: str = "video/mp4"):
-    """
-    Get a presigned URL for direct upload to R2 storage.
-    Use this for large files to avoid server memory issues.
-    """
+    """Get a presigned URL for direct upload to R2 storage."""
+    if not STORAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="R2 storage not configured")
     video_id = str(uuid.uuid4())
     extension = Path(filename).suffix or ".mp4"
     key = f"uploads/{video_id}{extension}"
-    
     try:
         upload_url = storage.generate_presigned_upload_url(key, content_type)
-        
         return UploadResponse(
             video_id=video_id,
             upload_url=upload_url,
