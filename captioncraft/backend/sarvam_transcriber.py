@@ -46,7 +46,7 @@ async def _transcribe_single_chunk(
         audio_content = f.read()
 
     files = {"file": ("audio.wav", audio_content, "audio/wav")}
-    data = {"language_code": language_code, "model": SARVAM_MODEL}
+    data = {"language_code": language_code, "model": SARVAM_MODEL, "with_timestamps": "true"}
 
     response = await client.post(
         f"{SARVAM_BASE_URL}/speech-to-text",
@@ -186,24 +186,55 @@ async def transcribe_audio_sarvam(
                 confidence=wd["confidence"],
             ))
 
-    # If no word timestamps from API, split the text ourselves
+    # If no word timestamps from API, distribute by syllable count (more accurate than uniform)
     if not words and full_text:
         import re
+        import unicodedata
 
         audio_duration_ms = int(duration * 1000) if duration > 0 else 60000
         text_words = re.findall(r'\S+', full_text)
 
-        if text_words:
-            word_duration = audio_duration_ms // len(text_words)
-            for i, word_text in enumerate(text_words):
-                start_ms = i * word_duration
-                end_ms = min((i + 1) * word_duration, audio_duration_ms)
+        def count_syllables(word: str) -> int:
+            """Estimate syllable count for Devanagari/Hinglish words."""
+            # Devanagari: count vowel matras + independent vowels
+            devanagari_vowels = set('\u0905\u0906\u0907\u0908\u0909\u090a\u090b\u090c\u090d\u090e\u090f\u0910\u0911\u0912\u0913\u0914')
+            devanagari_matras = set('\u093e\u093f\u0940\u0941\u0942\u0943\u0944\u0945\u0946\u0947\u0948\u0949\u094a\u094b\u094c')
+            # Count inherent 'a' vowels (consonants not followed by matra/halant)
+            count = 0
+            for i, ch in enumerate(word):
+                if ch in devanagari_vowels or ch in devanagari_matras:
+                    count += 1
+                elif '\u0900' <= ch <= '\u097F':  # Devanagari consonant
+                    # Check if followed by halant (virama) - if not, has inherent 'a'
+                    next_ch = word[i+1] if i+1 < len(word) else ''
+                    if next_ch != '\u094d':  # not halant
+                        count += 1
+            # Fallback for Latin/Hinglish words: count vowel clusters
+            if count == 0:
+                count = len(re.findall(r'[aeiouAEIOU]+', word)) or 1
+            return max(1, count)
+
+        # Calculate total syllables for proportional timing
+        syllable_counts = [count_syllables(w) for w in text_words]
+        total_syllables = sum(syllable_counts)
+
+        if text_words and total_syllables > 0:
+            current_ms = 0
+            for idx, (word_text, syllables) in enumerate(zip(text_words, syllable_counts)):
+                duration_ms = int((syllables / total_syllables) * audio_duration_ms)
+                duration_ms = max(150, duration_ms)  # min 150ms per word
+                # Clamp to audio duration
+                start_ms = min(current_ms, audio_duration_ms - 100)
+                end_ms = min(current_ms + duration_ms, audio_duration_ms)
+                if start_ms >= end_ms:
+                    end_ms = start_ms + 100
                 words.append(Word(
                     text=word_text,
                     start=start_ms,
                     end=end_ms,
-                    confidence=1.0,
+                    confidence=0.8,
                 ))
+                current_ms += duration_ms
 
     if not words:
         words = [Word(text=full_text or "No transcription", start=0, end=60000, confidence=1.0)]
