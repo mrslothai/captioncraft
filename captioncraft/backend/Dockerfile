@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     libass-dev \
     fontconfig \
     fonts-liberation \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -34,8 +35,8 @@ RUN mkdir -p temp output
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8080/health')" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-# Run the server
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run the server (Railway sets PORT env var dynamically)
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
