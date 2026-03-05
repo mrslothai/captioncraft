@@ -303,11 +303,15 @@ async def reprocess_with_words(job_id: str, video_path: str, words, style: str, 
     try:
         update_job_status(job_id, ProcessingStatus.GENERATING_SUBTITLES, 60, "Regenerating captions...")
         video_info = get_video_info(video_path)
+        # Convert string values to enums (generate_ass_subtitle expects enum objects)
+        style_enum = CaptionStyle(style) if isinstance(style, str) else style
+        font_enum = FontFamily(font) if isinstance(font, str) else font
+        position_enum = CaptionPosition(position) if isinstance(position, str) else position
         ass_content = generate_ass_subtitle(
             words=words,
-            style=style,
-            font=font,
-            position=position,
+            style=style_enum,
+            font=font_enum,
+            position=position_enum,
             words_per_line=4,
             video_width=video_info["width"],
             video_height=video_info["height"],
