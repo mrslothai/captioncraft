@@ -132,7 +132,7 @@ export default function Home() {
 
           if (statusData.status === 'completed' || statusData.status === 'complete') {
             clearInterval(pollInterval);
-            setResultUrl(statusData.result_url || videoPreviewUrl || '');
+            setResultUrl(`/api/download/${jobId}`);
             setAppState('complete');
           } else if (statusData.status === 'failed') {
             clearInterval(pollInterval);

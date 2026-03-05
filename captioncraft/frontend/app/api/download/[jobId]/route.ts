@@ -13,15 +13,23 @@ export async function GET(
     const response = await fetch(`${BACKEND_URL}/download/${jobId}`);
 
     if (!response.ok) {
-      const error = await response.json();
-      return NextResponse.json(
-        { error: error.detail || 'Download failed' },
-        { status: response.status }
-      );
+      let errorMsg = 'Download failed';
+      try {
+        const error = await response.json();
+        errorMsg = error.detail || errorMsg;
+      } catch {}
+      return NextResponse.json({ error: errorMsg }, { status: response.status });
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Stream binary video back to client
+    const buffer = await response.arrayBuffer();
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': 'video/mp4',
+        'Content-Disposition': `attachment; filename="captioned-video.mp4"`,
+        'Content-Length': response.headers.get('Content-Length') || '',
+      },
+    });
 
   } catch (error) {
     console.error('Download error:', error);
