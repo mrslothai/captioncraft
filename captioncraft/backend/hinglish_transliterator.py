@@ -15,6 +15,159 @@ from indic_transliteration import sanscript
 from indic_transliteration.sanscript import transliterate as _transliterate
 
 
+# ── English loanword map: Devanagari phonetic spelling → correct English ──
+# Applied BEFORE ITRANS transliteration so English words come out correctly
+LOANWORD_MAP = {
+    # Tech - Devices
+    'लैपटॉप': 'laptop', 'लैपटाप': 'laptop',
+    'मोबाइल': 'mobile', 'मोबाईल': 'mobile',
+    'फोन': 'phone', 'स्मार्टफोन': 'smartphone',
+    'कंप्यूटर': 'computer', 'कम्प्यूटर': 'computer',
+    'डेस्कटॉप': 'desktop', 'टैबलेट': 'tablet',
+    'स्क्रीन': 'screen', 'मॉनिटर': 'monitor',
+    'कीबोर्ड': 'keyboard', 'माउस': 'mouse',
+    'प्रिंटर': 'printer', 'स्पीकर': 'speaker',
+    'हेडफोन': 'headphone', 'चार्जर': 'charger',
+    'केबल': 'cable', 'एडाप्टर': 'adapter',
+    'बैटरी': 'battery', 'प्रोसेसर': 'processor',
+    'रैम': 'RAM', 'स्टोरेज': 'storage',
+    'एसएसडी': 'SSD', 'हार्डडिस्क': 'hard disk',
+    'कैमरा': 'camera', 'माइक': 'mic',
+    # Tech - Software/Internet
+    'इंटरनेट': 'internet', 'वाईफाई': 'WiFi', 'वाई-फाई': 'WiFi',
+    'ब्लूटूथ': 'Bluetooth', 'नेटवर्क': 'network',
+    'सर्वर': 'server', 'क्लाउड': 'cloud',
+    'डेटा': 'data', 'बैकअप': 'backup',
+    'ऐप': 'app', 'एप': 'app', 'एप्प': 'app',
+    'सॉफ्टवेयर': 'software', 'सॉफ़्टवेयर': 'software',
+    'अपडेट': 'update', 'अपग्रेड': 'upgrade',
+    'डाउनलोड': 'download', 'अपलोड': 'upload',
+    'इंस्टॉल': 'install', 'इंस्टाल': 'install',
+    'पासवर्ड': 'password', 'लॉगिन': 'login',
+    'अकाउंट': 'account', 'प्रोफाइल': 'profile', 'प्रोफ़ाइल': 'profile',
+    'लिंक': 'link', 'बटन': 'button',
+    'क्लिक': 'click', 'स्क्रॉल': 'scroll',
+    'सेटिंग': 'setting', 'सेटिंग्स': 'settings',
+    'सिक्योरिटी': 'security', 'प्राइवेसी': 'privacy',
+    'नोटिफिकेशन': 'notification', 'नोटिफिकेशंस': 'notifications',
+    'वेबसाइट': 'website', 'वेब': 'web',
+    'ब्राउज़र': 'browser', 'ब्राउजर': 'browser',
+    'सर्च': 'search', 'फ़िल्टर': 'filter', 'फिल्टर': 'filter',
+    'एरर': 'error', 'बग': 'bug', 'क्रैश': 'crash',
+    # Tech - AI/Coding
+    'एआई': 'AI', 'आर्टिफिशियल': 'artificial',
+    'टेक': 'tech', 'टेक्नोलॉजी': 'technology',
+    'कोडिंग': 'coding', 'कोड': 'code',
+    'प्रोग्रामिंग': 'programming', 'प्रोग्राम': 'program',
+    'डेवलपर': 'developer', 'डेवलपर्स': 'developers',
+    'डेवलपिंग': 'developing', 'डेवलपमेंट': 'development',
+    'डिज़ाइन': 'design', 'डिजाइन': 'design',
+    'फ्रेमवर्क': 'framework', 'लाइब्रेरी': 'library',
+    'एपीआई': 'API', 'डेटाबेस': 'database',
+    'फ्रंटएंड': 'frontend', 'बैकएंड': 'backend',
+    'फुलस्टैक': 'fullstack', 'डिप्लॉय': 'deploy',
+    # Brands
+    'गूगल': 'Google', 'यूट्यूब': 'YouTube',
+    'इंस्टाग्राम': 'Instagram', 'ट्विटर': 'Twitter',
+    'फेसबुक': 'Facebook', 'व्हाट्सएप': 'WhatsApp', 'व्हाट्सअप': 'WhatsApp',
+    'एंड्रॉयड': 'Android', 'एंड्राइड': 'Android',
+    'आईफोन': 'iPhone', 'एपल': 'Apple',
+    'मैकबुक': 'MacBook', 'मैकबुक': 'MacBook',
+    'विंडोज': 'Windows', 'लिनक्स': 'Linux',
+    'माइक्रोसॉफ्ट': 'Microsoft', 'अमेजन': 'Amazon',
+    'नेटफ्लिक्स': 'Netflix', 'स्पॉटिफाई': 'Spotify',
+    'टेस्ला': 'Tesla', 'ओपनएआई': 'OpenAI',
+    'चैटजीपीटी': 'ChatGPT', 'क्लॉड': 'Claude',
+    # Social Media
+    'वीडियो': 'video', 'रील': 'reel', 'रील्स': 'reels',
+    'शॉर्ट्स': 'shorts', 'स्टोरी': 'story', 'स्टोरीज': 'stories',
+    'पोस्ट': 'post', 'पोस्ट्स': 'posts',
+    'लाइक': 'like', 'लाइक्स': 'likes',
+    'कमेंट': 'comment', 'कमेंट्स': 'comments',
+    'शेयर': 'share', 'सब्सक्राइब': 'subscribe',
+    'फॉलो': 'follow', 'फॉलोअर्स': 'followers', 'फॉलोअर': 'follower',
+    'कंटेंट': 'content', 'क्रिएटर': 'creator',
+    'चैनल': 'channel', 'पेज': 'page',
+    'व्यूज': 'views', 'रीच': 'reach',
+    'इम्प्रेशन': 'impression', 'इम्प्रेशंस': 'impressions',
+    'एंगेजमेंट': 'engagement', 'वायरल': 'viral',
+    'ट्रेंड': 'trend', 'ट्रेंडिंग': 'trending',
+    'हैशटैग': 'hashtag', 'मीम': 'meme',
+    'थंबनेल': 'thumbnail', 'टाइटल': 'title',
+    'डिस्क्रिप्शन': 'description', 'कैप्शन': 'caption',
+    # Business/Finance
+    'बिजनेस': 'business', 'बिज़नेस': 'business',
+    'स्टार्टअप': 'startup', 'फाउंडर': 'founder',
+    'प्रोडक्ट': 'product', 'फीचर': 'feature', 'फ़ीचर': 'feature',
+    'यूजर': 'user', 'यूज़र': 'user', 'यूजर्स': 'users',
+    'कस्टमर': 'customer', 'कस्टमर्स': 'customers',
+    'मार्केटिंग': 'marketing', 'ब्रांड': 'brand',
+    'कैंपेन': 'campaign', 'एड': 'ad', 'एड्स': 'ads',
+    'सेल्स': 'sales', 'रेवेन्यू': 'revenue',
+    'प्रॉफिट': 'profit', 'इन्वेस्टमेंट': 'investment',
+    'फंडिंग': 'funding', 'पिच': 'pitch',
+    'बजट': 'budget', 'पेमेंट': 'payment',
+    'ऑफर': 'offer', 'डील': 'deal', 'डिस्काउंट': 'discount',
+    'डिस्काउंट्स': 'discounts', 'कैशबैक': 'cashback',
+    'सब्सक्रिप्शन': 'subscription', 'प्रीमियम': 'premium',
+    'फ्री': 'free', 'प्राइस': 'price', 'प्राइसिंग': 'pricing',
+    'ईएमआई': 'EMI', 'लोन': 'loan',
+    # Common adjectives/adverbs used in Hinglish
+    'बेस्ट': 'best', 'वर्स्ट': 'worst',
+    'बेटर': 'better', 'ग्रेट': 'great',
+    'परफेक्ट': 'perfect', 'अमेजिंग': 'amazing',
+    'ऑसम': 'awesome', 'कूल': 'cool',
+    'फास्ट': 'fast', 'स्लो': 'slow',
+    'स्मार्ट': 'smart', 'लाइट': 'light',
+    'हेवी': 'heavy', 'पावरफुल': 'powerful',
+    'लेवल': 'level', 'नेक्स्ट': 'next',
+    'टाइट': 'tight', 'लूज़': 'loose',
+    # Common English words used in Hinglish
+    'ऑन': 'on', 'ऑफ': 'off',
+    'योर': 'your', 'माय': 'my',
+    'सिचुएशन': 'situation', 'कंडीशन': 'condition',
+    'सजेशन': 'suggestion', 'सजेस्ट': 'suggest',
+    'डिपेंडिंग': 'depending', 'डिपेंड': 'depend',
+    'अवेलेबल': 'available', 'अवेलेबिलिटी': 'availability',
+    'लॉन्च': 'launch', 'लांच': 'launch',
+    'स्टूडेंट': 'student', 'स्टूडेंट्स': 'students',
+    'एक्सटेंड': 'extend', 'एक्सटेंशन': 'extension',
+    'डिटेल': 'detail', 'डिटेल्स': 'details',
+    'टास्क': 'task', 'टास्क्स': 'tasks',
+    'इंफॉर्मेशन': 'information', 'इन्फो': 'info',
+    'टाइम': 'time', 'डेट': 'date',
+    'डे': 'day', 'वीक': 'week', 'मंथ': 'month', 'ईयर': 'year',
+    'मिनट': 'minute', 'सेकंड': 'second',
+    'प्लान': 'plan', 'प्लानिंग': 'planning',
+    'टिप्स': 'tips', 'ट्रिक्स': 'tricks',
+    'गाइड': 'guide', 'ट्यूटोरियल': 'tutorial',
+    'रिव्यू': 'review', 'रेटिंग': 'rating',
+    'स्कोर': 'score', 'रिजल्ट': 'result',
+    'प्रॉब्लम': 'problem', 'सॉल्यूशन': 'solution',
+    'चेंज': 'change', 'अपडेट': 'update',
+    'वर्क': 'work', 'जॉब': 'job', 'करियर': 'career',
+    'टीम': 'team', 'मीटिंग': 'meeting',
+    'प्रेजेंटेशन': 'presentation', 'प्रोजेक्ट': 'project',
+    'रिपोर्ट': 'report', 'डेडलाइन': 'deadline',
+    'स्किल': 'skill', 'स्किल्स': 'skills',
+    'लर्निंग': 'learning', 'कोर्स': 'course',
+    'सर्टिफिकेट': 'certificate', 'डिग्री': 'degree',
+    'पोर्टफोलियो': 'portfolio', 'रिज्यूमे': 'resume',
+    'इंटरव्यू': 'interview', 'सैलरी': 'salary',
+    'पैकेज': 'package', 'बोनस': 'bonus',
+}
+
+# Build regex pattern for loanword replacement (longest match first)
+_LOANWORD_PATTERN = re.compile(
+    '(' + '|'.join(re.escape(k) for k in sorted(LOANWORD_MAP.keys(), key=len, reverse=True)) + ')'
+)
+
+
+def _apply_loanword_map(text: str) -> str:
+    """Replace Devanagari phonetic spellings of English words with correct English."""
+    return _LOANWORD_PATTERN.sub(lambda m: LOANWORD_MAP[m.group(0)], text)
+
+
 def is_devanagari(text: str) -> bool:
     return bool(re.search(r'[\u0900-\u097F]', text))
 
@@ -169,6 +322,7 @@ def _process_itrans_word(w: str) -> str:
         'men': 'mein',
         'dhanyvad': 'dhanyavaad', 'dhnyvad': 'dhanyavaad',
         'to': 'toh',
+        'lie': 'liye',
     }
     w_lower = w.lower()
     if w_lower in overrides:
@@ -178,9 +332,28 @@ def _process_itrans_word(w: str) -> str:
 
 
 def _process_devanagari_segment(text: str) -> str:
-    itrans = _transliterate(text, sanscript.DEVANAGARI, sanscript.ITRANS)
-    words = itrans.split()
-    return ' '.join(_process_itrans_word(w) for w in words)
+    # Apply loanword map first — replaces Devanagari phonetic English with correct English
+    text = _apply_loanword_map(text)
+    # Remove candra-O (ॉ U+093B) which bleeds into roman output
+    text = text.replace('\u093b', 'o').replace('\u0911', 'o')
+    # After loanword substitution, text may be mixed (Devanagari + English tokens)
+    # Split into Devanagari and non-Devanagari sub-segments and process separately
+    parts = re.split(r'([\u0900-\u097F\u0964\u0965]+)', text)
+    result_parts = []
+    for part in parts:
+        if not part:
+            continue
+        if re.search(r'[\u0900-\u097F]', part):
+            # Pure Devanagari — transliterate
+            itrans = _transliterate(part, sanscript.DEVANAGARI, sanscript.ITRANS)
+            words = itrans.split()
+            result_parts.append(' '.join(_process_itrans_word(w) for w in words))
+        else:
+            # English/numbers/punctuation — keep as-is (trim whitespace)
+            stripped = part.strip()
+            if stripped:
+                result_parts.append(stripped)
+    return ' '.join(result_parts)
 
 
 def devanagari_to_hinglish(text: str) -> str:
