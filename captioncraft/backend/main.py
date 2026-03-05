@@ -256,6 +256,57 @@ async def delete_job(job_id: str):
 
 
 # Startup and shutdown events
+
+@app.get("/transcript/{job_id}")
+async def get_transcript(job_id: str):
+    """Get word-level transcript for a job."""
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not job.words:
+        raise HTTPException(status_code=404, detail="No transcript available")
+    return {"words": [{"text": w.text, "start": w.start, "end": w.end} for w in job.words]}
+
+
+@app.post("/reprocess/{job_id}")
+async def reprocess_with_edits(job_id: str, body: dict, background_tasks: BackgroundTasks):
+    """Regenerate captions with edited words."""
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    from models import Word
+    job.words = [Word(text=w["text"], start=w["start"], end=w["end"], confidence=1.0) for w in body["words"]]
+    video_path = None
+    for ext in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
+        path = os.path.join(settings.temp_dir, f"{job.video_id}{ext}")
+        if os.path.exists(path):
+            video_path = path
+            break
+    if not video_path:
+        raise HTTPException(status_code=404, detail="Original video not found")
+    job.status = ProcessingStatus.PENDING
+    job.progress = 0
+    from processor import reprocess_with_words
+    background_tasks.add_task(
+        reprocess_with_words, job_id, video_path, job.words,
+        body.get("style", "classic"), body.get("font", "Montserrat"), body.get("position", "bottom")
+    )
+    return {"job_id": job_id, "message": "Reprocessing with edited transcript"}
+
+
+@app.get("/video/{job_id}")
+async def get_original_video(job_id: str):
+    """Stream the original uploaded video."""
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    for ext in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
+        path = os.path.join(settings.temp_dir, f"{job.video_id}{ext}")
+        if os.path.exists(path):
+            return FileResponse(path, media_type="video/mp4")
+    raise HTTPException(status_code=404, detail="Video not found")
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize on startup."""

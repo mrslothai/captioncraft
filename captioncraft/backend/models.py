@@ -89,6 +89,7 @@ class JobStatus(BaseModel):
     created_at: datetime
     updated_at: datetime
     error: Optional[str] = None
+    words: Optional[List[Word]] = None
 
 
 class UploadResponse(BaseModel):

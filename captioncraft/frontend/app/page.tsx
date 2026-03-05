@@ -42,6 +42,7 @@ export default function Home() {
   // Processing state
   const [job, setJob] = useState<ProcessingJob | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   // Handle video selection
   const handleVideoSelect = useCallback((file: File, previewUrl: string) => {
@@ -133,6 +134,7 @@ export default function Home() {
           if (statusData.status === 'completed' || statusData.status === 'complete') {
             clearInterval(pollInterval);
             setResultUrl(`/api/download/${jobId}`);
+            setJobId(jobId);
             setAppState('complete');
           } else if (statusData.status === 'failed') {
             clearInterval(pollInterval);
@@ -166,6 +168,7 @@ export default function Home() {
     });
     setJob(null);
     setResultUrl(null);
+    setJobId(null);
     setAppState('upload');
   }, [videoPreviewUrl]);
 
@@ -321,6 +324,17 @@ export default function Home() {
               resultUrl={resultUrl} 
               filename={`captioned-${videoFile?.name || 'video.mp4'}`}
             />
+            
+            {jobId && (
+              <div className="flex justify-center">
+                <a
+                  href={`/edit/${jobId}`}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl text-white font-medium transition-colors"
+                >
+                  ✏️ Edit Transcript
+                </a>
+              </div>
+            )}
             
             <div className="text-center">
               <button

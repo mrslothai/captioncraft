@@ -228,6 +228,9 @@ async def process_video(
         if not transcript.words:
             raise ProcessingError("No speech detected in video")
         
+        # Store words in job for transcript editor
+        jobs[job_id].words = transcript.words
+        
         # Step 4: Generate subtitles
         update_job_status(job_id, ProcessingStatus.GENERATING_SUBTITLES, 60, "Generating captions...")
         ass_content = generate_ass_subtitle(
@@ -289,3 +292,35 @@ def create_job(video_id: str) -> JobStatus:
 def get_job(job_id: str) -> Optional[JobStatus]:
     """Get job status by ID."""
     return jobs.get(job_id)
+
+
+async def reprocess_with_words(job_id: str, video_path: str, words, style: str, font: str, position: str):
+    """Regenerate captions with edited words (skip transcription)."""
+    settings = get_settings()
+    base_name = Path(video_path).stem
+    subtitle_path = os.path.join(settings.temp_dir, f"{base_name}_edited.ass")
+    output_path = os.path.join(settings.output_dir, f"{base_name}_captioned.mp4")
+    try:
+        update_job_status(job_id, ProcessingStatus.GENERATING_SUBTITLES, 60, "Regenerating captions...")
+        video_info = get_video_info(video_path)
+        ass_content = generate_ass_subtitle(
+            words=words,
+            style=style,
+            font=font,
+            position=position,
+            words_per_line=4,
+            video_width=video_info["width"],
+            video_height=video_info["height"],
+        )
+        with open(subtitle_path, "w", encoding="utf-8") as f:
+            f.write(ass_content)
+        update_job_status(job_id, ProcessingStatus.BURNING_CAPTIONS, 80, "Burning captions...")
+        fonts_dir = settings.fonts_dir
+        if os.path.isdir("/fonts"):
+            fonts_dir = "/fonts"
+        await burn_captions(video_path, subtitle_path, output_path, fonts_dir)
+        if os.path.exists(subtitle_path):
+            os.remove(subtitle_path)
+        update_job_status(job_id, ProcessingStatus.COMPLETED, 100, "Done!", output_path)
+    except Exception as e:
+        update_job_status(job_id, ProcessingStatus.FAILED, 0, str(e), error=str(e))
