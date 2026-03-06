@@ -46,7 +46,7 @@ async def _transcribe_single_chunk(
         audio_content = f.read()
 
     files = {"file": ("audio.wav", audio_content, "audio/wav")}
-    data = {"language_code": language_code, "model": SARVAM_MODEL, "with_timestamps": "true"}
+    data = {"language_code": language_code, "model": "saaras:v3", "mode": "translit", "with_timestamps": "true"}
 
     response = await client.post(
         f"{SARVAM_BASE_URL}/speech-to-text",
@@ -165,49 +165,48 @@ async def transcribe_audio_sarvam(
 
     if not word_data_list and assemblyai_key:
         try:
-            print("Using AssemblyAI for word-level timestamps + Hinglish transliteration...")
+            print("Using AssemblyAI for word-level timestamps...")
             from assemblyai_transcriber import get_word_timestamps
+            from text_aligner import align_words
             aai_words = get_word_timestamps(audio_path, assemblyai_key)
             print(f"AssemblyAI returned {len(aai_words)} words")
 
             if aai_words:
-                # Use AssemblyAI word TEXTS directly — transliterate them to Hinglish
-                # This guarantees text and timestamps always stay in sync (no index drift)
-                aai_texts = [w["text"] for w in aai_words]
-                if output_script == "hinglish":
-                    aai_texts = transliterate_batch(aai_texts)
-
-                for i, wd in enumerate(aai_words):
-                    word_data_list.append({
-                        "text": aai_texts[i],
-                        "start": wd["start"],
-                        "end": wd["end"],
-                        "confidence": wd.get("confidence", 1.0),
-                    })
-                print(f"Final word_data_list: {len(word_data_list)} words, first={word_data_list[0]['start']}ms last={word_data_list[-1]['end']}ms")
+                # Sarvam saaras:v3 translit already gave us clean Roman Hinglish text
+                # Use DP alignment to map Sarvam words → AssemblyAI timestamps
+                # This handles word count mismatches (numbers, compounds) without drift
+                import re as _re
+                sarvam_words = _re.findall(r'\S+', full_text)
+                print(f"Sarvam words: {len(sarvam_words)}, AAI words: {len(aai_words)}")
+                aligned = align_words(sarvam_words, aai_words)
+                for wd in aligned:
+                    word_data_list.append(wd)
+                print(f"Aligned: {len(word_data_list)} words, span {word_data_list[0]['start']}ms–{word_data_list[-1]['end']}ms")
 
         except Exception as e:
             print(f"AssemblyAI alignment failed: {e} — falling back to syllable estimation")
-            word_data_list = []  # reset to trigger syllable fallback
+            word_data_list = []
 
-    # Convert Devanagari to Hinglish if requested
-    if output_script == "hinglish":
+    # saaras:v3 translit already outputs Roman script — no further conversion needed
+    # Only convert if still using old saarika model (Devanagari output)
+    if output_script == "hinglish" and any('\u0900' <= c <= '\u097F' for c in full_text):
         print(f"Converting Devanagari to Hinglish...")
         full_text = devanagari_to_hinglish(full_text)
         print(f"Converted text: {full_text[:100]}...")
 
-    # Batch transliterate word texts if needed
+    # Build Word objects — skip transliteration if already Roman (saaras:v3 translit)
     words = []
     if word_data_list and output_script == "hinglish":
-        word_texts = [w["text"] for w in word_data_list]
-        transliterated_texts = transliterate_batch(word_texts)
-        for i, wd in enumerate(word_data_list):
-            words.append(Word(
-                text=transliterated_texts[i],
-                start=wd["start"],
-                end=wd["end"],
-                confidence=wd["confidence"],
-            ))
+        # Only transliterate if text is Devanagari (old model fallback)
+        needs_translit = any('\u0900' <= c <= '\u097F' for c in (word_data_list[0].get("text","") if word_data_list else ""))
+        if needs_translit:
+            word_texts = [w["text"] for w in word_data_list]
+            transliterated_texts = transliterate_batch(word_texts)
+            for i, wd in enumerate(word_data_list):
+                words.append(Word(text=transliterated_texts[i], start=wd["start"], end=wd["end"], confidence=wd["confidence"]))
+        else:
+            for wd in word_data_list:
+                words.append(Word(text=wd["text"], start=wd["start"], end=wd["end"], confidence=wd.get("confidence", 1.0)))
     elif word_data_list:
         for wd in word_data_list:
             words.append(Word(
