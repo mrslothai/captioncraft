@@ -10,7 +10,8 @@ def get_word_timestamps(audio_path: str, api_key: str) -> List[dict]:
     """
     aai.settings.api_key = api_key
     config = aai.TranscriptionConfig(
-        language_code="hi",  # Hindi (works for Hinglish)
+        speech_models=[aai.SpeechModel.universal],
+        language_detection=True,
     )
     transcriber = aai.Transcriber(config=config)
     transcript = transcriber.transcribe(audio_path)
