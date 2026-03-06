@@ -171,6 +171,16 @@ async def transcribe_audio_sarvam(
             print(f"AssemblyAI returned {len(aai_words)} word timestamps")
 
             if aai_words:
+                # Normalize: shift all timestamps so first word starts at 0ms
+                # Removes systematic lead-in offset (AssemblyAI often has ~500ms-1s delay)
+                first_start = aai_words[0]["start"] if aai_words else 0
+                if first_start > 0:
+                    print(f"AssemblyAI offset correction: -{first_start}ms")
+                    aai_words = [
+                        {**w, "start": max(0, w["start"] - first_start), "end": max(0, w["end"] - first_start)}
+                        for w in aai_words
+                    ]
+
                 # Get Sarvam Hinglish words (transliterated)
                 import re as _re
                 sarvam_word_texts = _re.findall(r'\S+', full_text)
