@@ -30,7 +30,27 @@ LOANWORD_MAP = {
     'हेडफोन': 'headphone', 'चार्जर': 'charger',
     'केबल': 'cable', 'एडाप्टर': 'adapter',
     'बैटरी': 'battery', 'प्रोसेसर': 'processor',
-    'रैम': 'RAM', 'स्टोरेज': 'storage',
+    'रैम': 'RAM', 'जीबी': 'GB', 'टीबी': 'TB', 'एमबी': 'MB',
+    'स्टोरेज': 'storage',
+    # Education
+    'कॉलेज': 'college', 'कालेज': 'college', 'स्कूल': 'school',
+    'स्टूडेंट': 'student', 'स्टूडेंट्स': 'students',
+    # Chips & specs
+    'चिप': 'chip', 'चीप': 'chip', 'प्रोचिप': 'Pro chip',
+    'वेरिएंट': 'variant', 'वेरिअंट': 'variant',
+    'टचआईडी': 'Touch ID', 'टच': 'touch',
+    # Numbers spoken as words (common in Hinglish)
+    'सिक्सटीन': '16', 'सिक्सटी': '60',
+    'एटीन': '18', 'ट्वेल्व': '12', 'थर्टीन': '13',
+    'फिफ्टी': '50', 'फिफ्टीटू': '512', 'फाइव': '5',
+    'सेवेंटी': '70', 'एटी': '80', 'नाइंटी': '90',
+    'थाउजेंड': '000',
+    # Common English words transcribed in Devanagari
+    'ओरिजिनल': 'original', 'ओरिजिनली': 'originally',
+    'बेसिकली': 'basically', 'एक्चुअली': 'actually',
+    'मैसिव': 'massive', 'टाइप': 'type',
+    'कमेंट': 'comment', 'कमेंट्स': 'comments',
+    'नियो': 'Neo', 'एयर': 'Air',
     'एसएसडी': 'SSD', 'हार्डडिस्क': 'hard disk',
     'कैमरा': 'camera', 'माइक': 'mic',
     # Tech - Software/Internet
@@ -375,8 +395,28 @@ def devanagari_to_hinglish(text: str) -> str:
     return ''.join(parts)
 
 
+def transliterate_word_smart(word: str) -> str:
+    """
+    Smart per-word transliteration for AssemblyAI output.
+    - Pure Latin/ASCII words (English, numbers) → keep as-is
+    - Devanagari words → transliterate to Hinglish
+    - Mixed → transliterate Devanagari parts, keep Latin parts
+    """
+    if not word:
+        return word
+    # Strip punctuation for check
+    clean = word.strip('.,!?।|')
+    # Pure Latin (English words, numbers, alphanumeric like "A18", "512GB") → keep
+    if re.match(r'^[a-zA-Z0-9\-_/]+$', clean):
+        return word
+    # Has Devanagari → transliterate
+    if is_devanagari(word):
+        return devanagari_to_hinglish(word)
+    return word
+
+
 # Backward compat
-transliterate_batch = lambda texts: [devanagari_to_hinglish(t) for t in texts]
+transliterate_batch = lambda texts: [transliterate_word_smart(t) for t in texts]
 transliterate_with_llm = devanagari_to_hinglish
 transliterate_char_by_char = devanagari_to_hinglish
 def clear_cache(): pass
