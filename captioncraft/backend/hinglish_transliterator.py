@@ -18,6 +18,50 @@ from indic_transliteration.sanscript import transliterate as _transliterate
 # ── English loanword map: Devanagari phonetic spelling → correct English ──
 # Applied BEFORE ITRANS transliteration so English words come out correctly
 LOANWORD_MAP = {
+    # Education
+    'कॉलेज': 'college', 'कालेज': 'college', 'काॅलेज': 'college',
+    'स्कूल': 'school', 'स्कुल': 'school',
+    'यूनिवर्सिटी': 'university', 'यूनिवर्सिटि': 'university',
+    'कोर्स': 'course', 'क्लास': 'class', 'सिलेबस': 'syllabus',
+    'एग्जाम': 'exam', 'टेस्ट': 'test', 'प्रोजेक्ट': 'project',
+    'प्रोजेक्ट्स': 'projects', 'असाइनमेंट': 'assignment',
+
+    # Numbers as words (AssemblyAI sometimes returns these)
+    'साठ': '60', 'सत्तर': '70', 'अस्सी': '80', 'नब्बे': '90',
+    'सौ': '100', 'हजार': '1000', 'लाख': 'lakh', 'करोड़': 'crore',
+    'पाँच': '5', 'छह': '6', 'सात': '7', 'आठ': '8', 'नौ': '9',
+    'दस': '10', 'बारह': '12', 'सोलह': '16', 'बीस': '20',
+    'पचास': '50', 'पचहत्तर': '75',
+
+    # Apple / MacBook specific
+    'मैकबुक': 'MacBook', 'मैकबुक': 'MacBook',
+    'एयर': 'Air', 'प्रो': 'Pro', 'मैक': 'Mac',
+    'आईफोन': 'iPhone', 'आइफोन': 'iPhone',
+    'आईपैड': 'iPad', 'एपल': 'Apple',
+    'चिप': 'chip', 'चीप': 'chip',
+    'टच': 'touch', 'टचआईडी': 'Touch ID', 'टच आईडी': 'Touch ID',
+    'रेटिना': 'Retina', 'लिक्विड': 'liquid',
+    'डिस्प्ले': 'display', 'डिसप्ले': 'display',
+    'सोलर': 'solar',
+
+    # Tech specs
+    'जीबी': 'GB', 'टीबी': 'TB', 'एमबी': 'MB',
+    'रैम': 'RAM', 'एसएसडी': 'SSD',
+    'वेरिएंट': 'variant', 'वैरिएंट': 'variant',
+    'वेरियंट': 'variant',
+    'टाइप-सी': 'Type-C', 'टाइप सी': 'Type-C', 'टाइपसी': 'Type-C',
+
+    # Commerce
+    'ओरिजिनल': 'original', 'ओरिजिनल': 'original',
+    'स्टूडेंट': 'student', 'स्टूडेंट्स': 'students',
+    'डिस्काउंट': 'discount', 'डिस्काउंट्स': 'discounts',
+    'प्राइस': 'price', 'प्राइसिंग': 'pricing',
+    'बजट': 'budget', 'अफोर्डेबल': 'affordable',
+    'कैशबैक': 'cashback', 'ऑफर': 'offer', 'डील': 'deal',
+
+    # Common Hinglish filler/connector words that should stay as Hindi
+    # (these are fine as transliterated, skip)
+
     # Tech - Devices
     'लैपटॉप': 'laptop', 'लैपटाप': 'laptop',
     'मोबाइल': 'mobile', 'मोबाईल': 'mobile',
