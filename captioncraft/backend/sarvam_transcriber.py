@@ -163,51 +163,28 @@ async def transcribe_audio_sarvam(
     settings_obj = get_settings()
     assemblyai_key = getattr(settings_obj, 'assemblyai_api_key', None)
 
-    if not word_data_list and full_text and assemblyai_key:
+    if not word_data_list and assemblyai_key:
         try:
-            print("No word timestamps from Sarvam — using AssemblyAI for alignment...")
+            print("Using AssemblyAI for word-level timestamps + Hinglish transliteration...")
             from assemblyai_transcriber import get_word_timestamps
             aai_words = get_word_timestamps(audio_path, assemblyai_key)
-            print(f"AssemblyAI returned {len(aai_words)} word timestamps")
+            print(f"AssemblyAI returned {len(aai_words)} words")
 
             if aai_words:
-                # Normalize: shift all timestamps so first word starts at 0ms
-                # Removes systematic lead-in offset (AssemblyAI often has ~500ms-1s delay)
-                first_start = aai_words[0]["start"] if aai_words else 0
-                if first_start > 0:
-                    print(f"AssemblyAI offset correction: -{first_start}ms")
-                    aai_words = [
-                        {**w, "start": max(0, w["start"] - first_start), "end": max(0, w["end"] - first_start)}
-                        for w in aai_words
-                    ]
-
-                # Get Sarvam Hinglish words (transliterated)
-                import re as _re
-                sarvam_word_texts = _re.findall(r'\S+', full_text)
-
-                # If output_script is hinglish, transliterate sarvam words
+                # Use AssemblyAI word TEXTS directly — transliterate them to Hinglish
+                # This guarantees text and timestamps always stay in sync (no index drift)
+                aai_texts = [w["text"] for w in aai_words]
                 if output_script == "hinglish":
-                    sarvam_word_texts = transliterate_batch(sarvam_word_texts)
+                    aai_texts = transliterate_batch(aai_texts)
 
-                # Align: zip sarvam text with aai timestamps
-                count = min(len(sarvam_word_texts), len(aai_words))
-                for i in range(count):
+                for i, wd in enumerate(aai_words):
                     word_data_list.append({
-                        "text": sarvam_word_texts[i],
-                        "start": aai_words[i]["start"],
-                        "end": aai_words[i]["end"],
-                        "confidence": aai_words[i].get("confidence", 1.0),
+                        "text": aai_texts[i],
+                        "start": wd["start"],
+                        "end": wd["end"],
+                        "confidence": wd.get("confidence", 1.0),
                     })
-
-                # If sarvam has more words than aai, append remaining with estimated times
-                if len(sarvam_word_texts) > len(aai_words) and aai_words:
-                    last_end = aai_words[-1]["end"]
-                    audio_duration_ms = int(duration * 1000)
-                    remaining = sarvam_word_texts[len(aai_words):]
-                    step = max(200, (audio_duration_ms - last_end) // max(1, len(remaining)))
-                    for j, txt in enumerate(remaining):
-                        s = last_end + j * step
-                        word_data_list.append({"text": txt, "start": s, "end": s + step, "confidence": 0.7})
+                print(f"Final word_data_list: {len(word_data_list)} words, first={word_data_list[0]['start']}ms last={word_data_list[-1]['end']}ms")
 
         except Exception as e:
             print(f"AssemblyAI alignment failed: {e} — falling back to syllable estimation")
