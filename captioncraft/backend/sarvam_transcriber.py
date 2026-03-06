@@ -159,6 +159,50 @@ async def transcribe_audio_sarvam(
 
     print(f"Sarvam combined transcript: {full_text[:200]}")
 
+    # --- HYBRID: Use AssemblyAI for timestamps if Sarvam gave no word timestamps ---
+    settings_obj = get_settings()
+    assemblyai_key = getattr(settings_obj, 'assemblyai_api_key', None)
+
+    if not word_data_list and full_text and assemblyai_key:
+        try:
+            print("No word timestamps from Sarvam — using AssemblyAI for alignment...")
+            from assemblyai_transcriber import get_word_timestamps
+            aai_words = get_word_timestamps(audio_path, assemblyai_key)
+            print(f"AssemblyAI returned {len(aai_words)} word timestamps")
+
+            if aai_words:
+                # Get Sarvam Hinglish words (transliterated)
+                import re as _re
+                sarvam_word_texts = _re.findall(r'\S+', full_text)
+
+                # If output_script is hinglish, transliterate sarvam words
+                if output_script == "hinglish":
+                    sarvam_word_texts = transliterate_batch(sarvam_word_texts)
+
+                # Align: zip sarvam text with aai timestamps
+                count = min(len(sarvam_word_texts), len(aai_words))
+                for i in range(count):
+                    word_data_list.append({
+                        "text": sarvam_word_texts[i],
+                        "start": aai_words[i]["start"],
+                        "end": aai_words[i]["end"],
+                        "confidence": aai_words[i].get("confidence", 1.0),
+                    })
+
+                # If sarvam has more words than aai, append remaining with estimated times
+                if len(sarvam_word_texts) > len(aai_words) and aai_words:
+                    last_end = aai_words[-1]["end"]
+                    audio_duration_ms = int(duration * 1000)
+                    remaining = sarvam_word_texts[len(aai_words):]
+                    step = max(200, (audio_duration_ms - last_end) // max(1, len(remaining)))
+                    for j, txt in enumerate(remaining):
+                        s = last_end + j * step
+                        word_data_list.append({"text": txt, "start": s, "end": s + step, "confidence": 0.7})
+
+        except Exception as e:
+            print(f"AssemblyAI alignment failed: {e} — falling back to syllable estimation")
+            word_data_list = []  # reset to trigger syllable fallback
+
     # Convert Devanagari to Hinglish if requested
     if output_script == "hinglish":
         print(f"Converting Devanagari to Hinglish...")
